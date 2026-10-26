@@ -8,8 +8,8 @@
             "value": [
                 {
                     "name": "gpt-4o-mini",
-                    "model": "gpt-4o-mini",
-                    "version": "2024-07-18",
+                    "model": "gpt-4.1-mini",
+                    "version": "2025-04-14",
                     "sku": "GlobalStandard",
                     "capacity": 10
                 }

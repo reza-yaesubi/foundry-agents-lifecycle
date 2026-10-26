@@ -5,10 +5,10 @@
 # HOW THIS FILE WORKS:
 #   azd reads this file to understand your project structure.
 #   When you run `azd up`, it:
-#     1. Provisions infrastructure defined in infra/ (Bicep)
-#     2. Deploys model deployments listed below
-#     3. Builds & pushes containers (if hosted agents)
-#     4. Creates the agent in Foundry
+#     1. Provisions infrastructure defined in infra/ (Bicep) — the Foundry
+#        account/project, model deployments, and Key Vault.
+#     2. Runs the postprovision hook, which deploys the agent to Foundry via
+#        src/scripts/deploy_agent.py (the same script CI/CD uses).
 #
 # WHY THIS MATTERS FOR CI/CD:
 #   This file is the declarative "what I want deployed" definition.
@@ -29,15 +29,28 @@ infra:
   module: main
 
 # ---------------------------------------------------------------------------
-# Services — the agent application
+# Agent deployment — handled by the repo's own SDK script
 # ---------------------------------------------------------------------------
-services:
-  agent:
-    # The agent is deployed via the Python SDK script, not as a container
-    # For hosted agents, you'd change this to a Docker-based service
-    language: python
-    host: ai.agent
-    project: src/agent
+# This project creates a *prompt agent* (name + model + instructions + tools)
+# via src/scripts/deploy_agent.py, driven by config/agent-config.{env}.json.
+# That same script is used by the Azure DevOps pipeline, so `azd up` reuses it
+# instead of duplicating the agent definition.
+#
+# `azd up` therefore runs: provision Bicep infra → deploy the agent.
+# The AZURE_AI_PROJECT_ENDPOINT Bicep output is injected automatically.
+# ---------------------------------------------------------------------------
+hooks:
+  postprovision:
+    posix:
+      shell: sh
+      continueOnError: false
+      interactive: false
+      run: .venv/bin/python src/scripts/deploy_agent.py --env "$AZURE_ENV_NAME"
+    windows:
+      shell: pwsh
+      continueOnError: false
+      interactive: false
+      run: .venv/Scripts/python.exe src/scripts/deploy_agent.py --env $env:AZURE_ENV_NAME
 
 # ---------------------------------------------------------------------------
 # Model Deployments
@@ -45,13 +58,13 @@ services:
 # These models are deployed to your Foundry project.
 # Different environments can use different models or capacities.
 #
-# In dev:  Use gpt-4o-mini (cheaper, faster iteration)
+# In dev:  Use gpt-4.1-mini (cheaper, faster iteration)
 # In prod: Use gpt-4o (better quality, higher capacity)
 # ---------------------------------------------------------------------------
 ai:
   models:
-    - name: gpt-4o-mini
-      version: "2024-07-18"
+    - name: gpt-4.1-mini
+      version: "2025-04-14"
       sku:
         name: GlobalStandard
         capacity: 10    # Tokens per minute (in thousands)

@@ -39,8 +39,8 @@ param environment string
 param modelDeployments array = [
   {
     name: 'gpt-4o-mini'
-    model: 'gpt-4o-mini'
-    version: '2024-07-18'
+    model: 'gpt-4.1-mini'
+    version: '2025-04-14'
     sku: 'GlobalStandard'
     capacity: 10
   }
@@ -107,3 +107,8 @@ output projectEndpoint string = foundryAccount.outputs.projectEndpoint
 output keyVaultName string = keyVault.outputs.keyVaultName
 output foundryResourceName string = foundryAccount.outputs.foundryResourceName
 output aiServicesEndpoint string = foundryAccount.outputs.foundryEndpoint
+
+// Exposed under the exact name deploy_agent.py expects. azd stores template
+// outputs as environment variables in .azure/<env>/.env and injects them into
+// hooks, so the postprovision hook can deploy the agent without manual setup.
+output AZURE_AI_PROJECT_ENDPOINT string = foundryAccount.outputs.projectEndpoint

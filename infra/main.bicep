@@ -49,6 +49,10 @@ param modelDeployments array = [
 @description('Principal ID to grant AI User role (your pipeline identity)')
 param deployerPrincipalId string = ''
 
+@description('Principal type of deployerPrincipalId (azd passes User for local runs)')
+@allowed(['User', 'ServicePrincipal', 'Group'])
+param deployerPrincipalType string = 'ServicePrincipal'
+
 // Short name for Key Vault (max 24 chars: 3-24 alphanumeric + hyphens)
 var kvShortBase = replace(baseName, 'foundry-demo-', 'fd-')
 
@@ -64,6 +68,7 @@ module keyVault 'modules/keyvault.bicep' = {
     name: 'kv-${kvShortBase}-${environment}'
     location: location
     deployerPrincipalId: deployerPrincipalId
+    deployerPrincipalType: deployerPrincipalType
   }
 }
 
@@ -81,6 +86,7 @@ module foundryAccount 'modules/foundry-account.bicep' = {
     location: location
     projectName: '${baseName}-project-${environment}'
     deployerPrincipalId: deployerPrincipalId
+    deployerPrincipalType: deployerPrincipalType
   }
 }
 

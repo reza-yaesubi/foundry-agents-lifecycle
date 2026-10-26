@@ -18,6 +18,10 @@ param location string
 @description('Principal ID to grant secrets access')
 param deployerPrincipalId string
 
+@description('Principal type of deployerPrincipalId')
+@allowed(['User', 'ServicePrincipal', 'Group'])
+param deployerPrincipalType string = 'ServicePrincipal'
+
 resource keyVault 'Microsoft.KeyVault/vaults@2025-05-01' = {
   name: name
   location: location
@@ -40,7 +44,7 @@ resource secretsOfficerRole 'Microsoft.Authorization/roleAssignments@2022-04-01'
   properties: {
     roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'b86a8fe4-44ce-4948-aee5-eccb2c155cd7')
     principalId: deployerPrincipalId
-    principalType: 'ServicePrincipal'
+    principalType: deployerPrincipalType
   }
 }
 

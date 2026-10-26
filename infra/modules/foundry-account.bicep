@@ -30,6 +30,10 @@ param projectName string
 @description('Principal ID to grant data-plane access for agent CRUD (e.g., pipeline SP)')
 param deployerPrincipalId string = ''
 
+@description('Principal type of deployerPrincipalId')
+@allowed(['User', 'ServicePrincipal', 'Group'])
+param deployerPrincipalType string = 'ServicePrincipal'
+
 // ---------------------------------------------------------------------------
 // Foundry Resource — hosts models AND manages projects
 // ---------------------------------------------------------------------------
@@ -90,7 +94,7 @@ resource cogServicesUserRole 'Microsoft.Authorization/roleAssignments@2022-04-01
   properties: {
     roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'a97b65f3-24c7-4388-baec-2e87135dc908')
     principalId: deployerPrincipalId
-    principalType: 'ServicePrincipal'
+    principalType: deployerPrincipalType
   }
 }
 

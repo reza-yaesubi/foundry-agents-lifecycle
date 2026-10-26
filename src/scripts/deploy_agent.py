@@ -43,6 +43,34 @@ project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
 
 
+def _is_transient_provisioning_error(exc: Exception) -> bool:
+    """Errors expected right after infra is provisioned: the new project isn't
+    visible on the data plane yet, or a fresh role assignment hasn't propagated."""
+    from azure.core.exceptions import HttpResponseError, ResourceNotFoundError
+
+    if isinstance(exc, ResourceNotFoundError):
+        return "project not found" in str(exc).lower()
+    if isinstance(exc, HttpResponseError):
+        return "does not have permissions" in str(exc).lower()
+    return False
+
+
+def _create_version_with_retry(agents_client, max_wait_seconds: int = 600, **kwargs):
+    import time
+
+    delay, waited = 15, 0
+    while True:
+        try:
+            return agents_client.create_version(**kwargs)
+        except Exception as exc:
+            if not _is_transient_provisioning_error(exc) or waited >= max_wait_seconds:
+                raise
+            print(f"  ⏳ Project/RBAC not ready yet ({type(exc).__name__}); retrying in {delay}s...")
+            time.sleep(delay)
+            waited += delay
+            delay = min(delay * 2, 60)
+
+
 def deploy_agent(environment: str, dry_run: bool = False) -> None:
     """
     Deploy (create or update) an agent to the specified environment.
@@ -138,7 +166,8 @@ def deploy_agent(environment: str, dry_run: bool = False) -> None:
         # If the agent name doesn't exist yet, it creates the agent.
         # If it already exists, it creates a new version with the updated config.
         print(f"  🚀 Deploying agent '{config.name}'...")
-        agent = agents_client.create_version(
+        agent = _create_version_with_retry(
+            agents_client,
             agent_name=config.name,
             definition=sdk_params["definition"],
             metadata=sdk_params.get("metadata"),

@@ -72,13 +72,14 @@ jobs:
       # Pipeline-specific variables
       # -----------------------------------------------------------------------
       # ENVIRONMENT: Which stage we're deploying to (dev/test/prod)
-      # AZURE_RESOURCE_GROUP: The resource group this pipeline owns.
-      #   GitHub Actions always deploys to rg-foundry-github-{env}.
-      #   Azure DevOps deploys to rg-foundry-ado-{env} (see cd-pipeline.yml).
-      #   This isolation prevents the two pipelines from stomping on each other.
+      # AZURE_RESOURCE_GROUP: The resource group to deploy into.
+      #   DEV targets the resource group provisioned by `azd up` (rg-dev), so
+      #   the pipeline updates the same Foundry account/project
+      #   (p2smr-dev / p2smr-project-dev) instead of creating a parallel one.
+      #   TEST/PROD still use isolated rg-foundry-github-{env} groups.
       # -----------------------------------------------------------------------
       ENVIRONMENT: dev
-      AZURE_RESOURCE_GROUP: rg-foundry-github-dev
+      AZURE_RESOURCE_GROUP: rg-dev
 
     steps:
       - uses: actions/checkout@v4
@@ -110,17 +111,16 @@ jobs:
       # -----------------------------------------------------------------------
       # Deploy Infrastructure (IaC)
       # -----------------------------------------------------------------------
-      # This is a SUBSCRIPTION-LEVEL deployment. It:
-      #   1. Creates the resource group (rg-foundry-github-dev)
-      #   2. Deploys all Azure resources into it (AI Foundry, models, Key Vault)
-      #   3. Outputs the project endpoint for the agent deploy step
+      # This is a RESOURCE-GROUP-LEVEL deployment of infra/main.bicep — the
+      # same template and scope `azd up` uses — into the existing azd resource
+      # group. It:
+      #   1. Updates the Foundry account/project, models, and Key Vault
+      #   2. Outputs the project endpoint for the agent deploy step
       #
-      # Why "az deployment sub create" instead of "az deployment group create"?
-      #   Because we need to CREATE the resource group itself. A group-level
-      #   deployment can only deploy INTO an existing resource group.
-      #
-      # The pipelineSource=github parameter ensures this pipeline's resources
-      # are isolated from Azure DevOps pipeline resources (pipelineSource=ado).
+      # Why "az deployment group create" here (TEST/PROD use "sub create")?
+      #   rg-dev already exists (created by azd). A group-level deployment
+      #   never touches the resource group itself, so azd's 'azd-env-name'
+      #   tag is preserved and `azd up` keeps working against the same RG.
       # -----------------------------------------------------------------------
       - name: Deploy Infrastructure
         id: deploy-infra
@@ -135,11 +135,10 @@ jobs:
           # when multiple resources deploy on the same account in quick succession.
           for attempt in 1 2 3; do
             echo "  Attempt ${attempt}/3..."
-            if az deployment sub create \
-              --location eastus2 \
+            if az deployment group create \
+              --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
               --name "github-${{ env.ENVIRONMENT }}-$(date +%Y%m%d-%H%M%S)" \
-              --template-file infra/deploy-infra.bicep \
-              --parameters environment=${{ env.ENVIRONMENT }} pipelineSource=github \
+              --template-file infra/main.bicep \
               --parameters infra/environments/${{ env.ENVIRONMENT }}.parameters.json \
               --parameters deployerPrincipalId="${DEPLOYER_OID}" \
               --query 'properties.outputs' -o json > /tmp/infra-outputs.json; then

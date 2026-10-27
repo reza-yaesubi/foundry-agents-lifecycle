@@ -98,7 +98,8 @@ az ad app federated-credential create \
     "subject": "repo:your-org/foundry-agents-lifecycle:ref:refs/heads/main",
     "audiences": ["api://AzureADTokenExchange"]
   }'
-
+# 2. Create Service Principal for the registered App
+az ad sp create --id <APP_ID>
 # 3. Grant the app "Azure AI User" role on your Foundry project
 az role assignment create \
   --assignee <APP_ID> \

@@ -124,11 +124,13 @@ def _query_agent_with_tool_loop(
                 "output": output,
             })
 
+        # The conversation already carries prior turns (including the
+        # function_call items), so previous_response_id must not be sent —
+        # the API rejects requests that set both.
         response = openai_client.responses.create(
             conversation=conversation.id,
             extra_body=agent_ref,
             input=tool_outputs,
-            previous_response_id=response.id,
         )
 
     answer = getattr(response, "output_text", "") or ""

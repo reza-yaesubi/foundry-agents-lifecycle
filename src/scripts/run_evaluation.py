@@ -141,6 +141,7 @@ def _score_agent_metrics(
     openai_client,
     responses: list[dict],
     scores: dict[str, list[float]],
+    eval_model: str = "gpt-4o-mini",
 ) -> None:
     """
     Score agent-specific metrics using the OpenAI Evals API.
@@ -156,13 +157,13 @@ def _score_agent_metrics(
     Reference: https://learn.microsoft.com/azure/ai-foundry/how-to/evaluate-agent
     """
     eval_criteria = [
-        {"type": "label_model", "model": "gpt-4o-mini", "name": "task_adherence",
+        {"type": "label_model", "model": eval_model, "name": "task_adherence",
          "passing_labels": ["adherent"], "labels": ["adherent", "non-adherent"],
          "instructions": "Rate if the response adheres to the agent's task/instructions."},
-        {"type": "label_model", "model": "gpt-4o-mini", "name": "intent_resolution",
+        {"type": "label_model", "model": eval_model, "name": "intent_resolution",
          "passing_labels": ["resolved"], "labels": ["resolved", "unresolved"],
          "instructions": "Rate if the response resolves the user's intent."},
-        {"type": "label_model", "model": "gpt-4o-mini", "name": "tool_call_accuracy",
+        {"type": "label_model", "model": eval_model, "name": "tool_call_accuracy",
          "passing_labels": ["accurate"], "labels": ["accurate", "inaccurate"],
          "instructions": "Rate if any tool calls in the response were accurate."},
     ]
@@ -317,7 +318,7 @@ def _run_real_evaluation(endpoint: str, eval_data: list[dict], eval_model: str =
                 continue
             g = groundedness_eval(response=resp["answer"], context=resp["expected"])
             r = relevance_eval(response=resp["answer"], query=resp["question"])
-            c = coherence_eval(response=resp["answer"])
+            c = coherence_eval(query=resp["question"], response=resp["answer"])
             scores["groundedness"].append(g.get("groundedness", 0))
             scores["relevance"].append(r.get("relevance", 0))
             scores["coherence"].append(c.get("coherence", 0))
@@ -325,7 +326,7 @@ def _run_real_evaluation(endpoint: str, eval_data: list[dict], eval_model: str =
         # OpenAI Evals API for agent-specific metrics
         try:
             openai_client = client.get_openai_client()
-            _score_agent_metrics(openai_client, responses, scores)
+            _score_agent_metrics(openai_client, responses, scores, eval_model=eval_model)
         except Exception as e:
             print(f"  ⚠️  OpenAI Evals API unavailable ({e}). Using SDK scores only.")
             for key in ("task_adherence", "intent_resolution", "tool_call_accuracy"):

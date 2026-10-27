@@ -18,7 +18,7 @@
 
     "evaluation": {
         "enabled": true,
-        "model": "gpt-4o-mini",
+        "model": "eval-judge",
         "dataset": "src/tests/integration/eval_dataset.jsonl",
         "thresholds": {
             "groundedness": 3.0,

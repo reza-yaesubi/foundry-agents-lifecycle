@@ -19,6 +19,13 @@
                     "version": "2025-04-14",
                     "sku": "GlobalStandard",
                     "capacity": 30
+                },
+                {
+                    "name": "eval-judge",
+                    "model": "gpt-4.1-mini",
+                    "version": "2025-04-14",
+                    "sku": "GlobalStandard",
+                    "capacity": 50
                 }
             ]
         }

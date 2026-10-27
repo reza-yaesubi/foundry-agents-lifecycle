@@ -44,6 +44,15 @@ param modelDeployments array = [
     sku: 'GlobalStandard'
     capacity: 10
   }
+  // Dedicated LLM-as-judge deployment for run_evaluation.py, isolated from
+  // agent traffic so evaluation calls don't get throttled (HTTP 429).
+  {
+    name: 'eval-judge'
+    model: 'gpt-4.1-mini'
+    version: '2025-04-14'
+    sku: 'GlobalStandard'
+    capacity: 50
+  }
 ]
 
 @description('Principal ID to grant AI User role (your pipeline identity)')
